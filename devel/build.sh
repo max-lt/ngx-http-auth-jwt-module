@@ -8,7 +8,7 @@ set -e
 STEP=${1:-"s0"}
 
 # Copy resources in docker's scope
-mkdir -p tmp && cp -r ../config ../nginx ../resources ../src tmp
+mkdir -p tmp && cp -r ../config ../resources ../src tmp
 
 case "$STEP" in
   "s0" )

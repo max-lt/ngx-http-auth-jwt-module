@@ -91,7 +91,7 @@ RUN  JWT_AUTH_MODULE=ngx_http_auth_jwt_module \
     && make check \
     && make install \
     && cd .. \
-	&& rm -rf libjwt \
+    && rm -rf libjwt \
   \
   # END libjwt install
   && curl -fSL http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz -o nginx.tar.gz \
@@ -163,8 +163,8 @@ RUN  JWT_AUTH_MODULE=ngx_http_auth_jwt_module \
   && ln -sf /dev/stdout /var/log/nginx/access.log \
   && ln -sf /dev/stderr /var/log/nginx/error.log
 
-COPY nginx/nginx.conf /etc/nginx/nginx.conf
-COPY nginx/nginx.vh.default.conf /etc/nginx/conf.d/default.conf
+COPY --from=nginx:1.12.2-alpine /etc/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY --from=nginx:1.12.2-alpine /etc/nginx/conf.d/default.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 

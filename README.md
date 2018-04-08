@@ -6,7 +6,6 @@ Original repository is https://github.com/TeslaGov/ngx-http-auth-jwt-module
  - Rebased build on [official nginx Dockerfile](https://github.com/nginxinc/docker-nginx) (alpine) so some modules have been 
  removed (pcre, pcre-jit, debug, http_xslt_module, google_perftools_module, ...)
  - Significantly lighter image (uncompressed: ~780MB -> ~17MB, compressed: ~280MB -> ~7MB)
- - Copied the "nginx" directory from the [official nginx Dockerfile](https://github.com/nginxinc/docker-nginx) to reproduce official image.
  - Added development intermediates Docker images (in `devel` dir).
  
 ### Build:
