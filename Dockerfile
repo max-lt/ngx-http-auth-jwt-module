@@ -1,108 +1,171 @@
-FROM centos:7
+FROM alpine:3.7
 
-LABEL maintainer="TeslaGov" email="developers@teslagov.com"
+LABEL maintainer="NGINX Docker Maintainers <docker-maint@nginx.com>"
 
-ARG NGINX_VERSION=1.12.2
+ENV NGINX_VERSION 1.13.10
 
-ENV LD_LIBRARY_PATH=/usr/local/lib
+ADD . /tmp/ngx-http-auth-jwt-module
 
-RUN yum -y install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm && \
-    yum -y update && \
-	yum -y groupinstall 'Development Tools' && \
-	yum -y install pcre-devel pcre zlib-devel openssl-devel wget cmake check-devel check && \
-	yum -y install nginx-$NGINX_VERSION
+RUN  JWT_AUTH_MODULE=ngx_http_auth_jwt_module \
+  && JANSSON_VERSION=2.10 \
+  && LIBJWT_VERSION=1.9.0 \
+  && GPG_KEYS=B0F4253373F8F6F510D42178520A9993A1C052F8 \
+  && CONFIG="\
+    --prefix=/etc/nginx \
+    --sbin-path=/usr/sbin/nginx \
+    --modules-path=/usr/lib/nginx/modules \
+    --conf-path=/etc/nginx/nginx.conf \
+    --error-log-path=/var/log/nginx/error.log \
+    --http-log-path=/var/log/nginx/access.log \
+    --pid-path=/var/run/nginx.pid \
+    --lock-path=/var/run/nginx.lock \
+    --http-client-body-temp-path=/var/cache/nginx/client_temp \
+    --http-proxy-temp-path=/var/cache/nginx/proxy_temp \
+    --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp \
+    --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp \
+    --http-scgi-temp-path=/var/cache/nginx/scgi_temp \
+    --user=nginx \
+    --group=nginx \
+    --with-http_ssl_module \
+    --with-http_realip_module \
+    --with-http_addition_module \
+    --with-http_sub_module \
+    --with-http_dav_module \
+    --with-http_flv_module \
+    --with-http_mp4_module \
+    --with-http_gunzip_module \
+    --with-http_gzip_static_module \
+    --with-http_random_index_module \
+    --with-http_secure_link_module \
+    --with-http_stub_status_module \
+    --with-http_auth_request_module \
+    --with-http_xslt_module=dynamic \
+    --with-http_image_filter_module=dynamic \
+    --with-http_geoip_module=dynamic \
+    --with-threads \
+    --with-stream \
+    --with-stream_ssl_module \
+    --with-stream_ssl_preread_module \
+    --with-stream_realip_module \
+    --with-stream_geoip_module=dynamic \
+    --with-http_slice_module \
+    --with-mail \
+    --with-mail_ssl_module \
+    --with-compat \
+    --with-file-aio \
+    --with-http_v2_module \
+  --add-dynamic-module=/tmp/ngx-http-auth-jwt-module \
+  --with-http_degradation_module \
+  --with-ipv6 \
+  " \
+  && addgroup -S nginx \
+  && adduser -D -S -h /var/cache/nginx -s /sbin/nologin -G nginx nginx \
+  && apk add --no-cache jansson-dev \
+  && apk add --no-cache --virtual .build-deps \
+    gcc \
+    libc-dev \
+    make \
+    openssl-dev \
+    pcre-dev \
+    zlib-dev \
+    linux-headers \
+    curl \
+    gnupg \
+    libxslt-dev \
+    gd-dev \
+    geoip-dev \
+  \
+  # Extra depencies for libjwt
+    autoconf automake libtool cmake check-dev \
+  \
+  # BEGIN libjwt install
+  && mkdir libjwt \
+    && curl -sL https://github.com/benmcollins/libjwt/archive/v$LIBJWT_VERSION.tar.gz \
+     | tar -zx -C libjwt/ --strip-components=1 \
+    && cd libjwt \
+    && autoreconf -i \
+    && ./configure \
+    && make all \
+    && make check \
+    && make install \
+    && cd .. \
+	&& rm -rf libjwt \
+  \
+  # END libjwt install
+  && curl -fSL http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz -o nginx.tar.gz \
+  && curl -fSL http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz.asc  -o nginx.tar.gz.asc \
+  && export GNUPGHOME="$(mktemp -d)" \
+  && found=''; \
+  for server in \
+    ha.pool.sks-keyservers.net \
+    hkp://keyserver.ubuntu.com:80 \
+    hkp://p80.pool.sks-keyservers.net:80 \
+    pgp.mit.edu \
+  ; do \
+    echo "Fetching GPG key $GPG_KEYS from $server"; \
+    gpg --keyserver "$server" --keyserver-options timeout=10 --recv-keys "$GPG_KEYS" && found=yes && break; \
+  done; \
+  test -z "$found" && echo >&2 "error: failed to fetch GPG key $GPG_KEYS" && exit 1; \
+  gpg --batch --verify nginx.tar.gz.asc nginx.tar.gz \
+  && rm -r "$GNUPGHOME" nginx.tar.gz.asc \
+  && mkdir -p /usr/src \
+  && tar -zxC /usr/src -f nginx.tar.gz \
+  && rm nginx.tar.gz \
+  && cd /usr/src/nginx-$NGINX_VERSION \
+  && ./configure $CONFIG --with-debug \
+  && make -j$(getconf _NPROCESSORS_ONLN) \
+  && mv objs/nginx objs/nginx-debug \
+  && mv objs/$JWT_AUTH_MODULE.so objs/$JWT_AUTH_MODULE-debug.so \
+  && mv objs/ngx_http_xslt_filter_module.so objs/ngx_http_xslt_filter_module-debug.so \
+  && mv objs/ngx_http_image_filter_module.so objs/ngx_http_image_filter_module-debug.so \
+  && mv objs/ngx_http_geoip_module.so objs/ngx_http_geoip_module-debug.so \
+  && mv objs/ngx_stream_geoip_module.so objs/ngx_stream_geoip_module-debug.so \
+  && ./configure $CONFIG \
+  && make -j$(getconf _NPROCESSORS_ONLN) \
+  && make install \
+  && rm -rf /etc/nginx/html/ \
+  && mkdir /etc/nginx/conf.d/ \
+  && mkdir -p /usr/share/nginx/html/ \
+  && install -m644 html/index.html /usr/share/nginx/html/ \
+  && install -m644 html/50x.html /usr/share/nginx/html/ \
+  && install -m755 objs/nginx-debug /usr/sbin/nginx-debug \
+  && install -m755 objs/$JWT_AUTH_MODULE-debug.so /usr/lib/nginx/modules/$JWT_AUTH_MODULE-debug.so \
+  && install -m755 objs/ngx_http_xslt_filter_module-debug.so /usr/lib/nginx/modules/ngx_http_xslt_filter_module-debug.so \
+  && install -m755 objs/ngx_http_image_filter_module-debug.so /usr/lib/nginx/modules/ngx_http_image_filter_module-debug.so \
+  && install -m755 objs/ngx_http_geoip_module-debug.so /usr/lib/nginx/modules/ngx_http_geoip_module-debug.so \
+  && install -m755 objs/ngx_stream_geoip_module-debug.so /usr/lib/nginx/modules/ngx_stream_geoip_module-debug.so \
+  && ln -s ../../usr/lib/nginx/modules /etc/nginx/modules \
+  && strip /usr/sbin/nginx* \
+  && strip /usr/lib/nginx/modules/*.so \
+  && rm -rf /usr/src/nginx-$NGINX_VERSION \
+  \
+  # Bring in gettext so we can get `envsubst`, then throw
+  # the rest away. To do this, we need to install `gettext`
+  # then move `envsubst` out of the way so `gettext` can
+  # be deleted completely, then move `envsubst` back.
+  && apk add --no-cache --virtual .gettext gettext \
+  && mv /usr/bin/envsubst /tmp/ \
+  \
+  && runDeps="$( \
+    scanelf --needed --nobanner --format '%n#p' /usr/sbin/nginx /usr/lib/nginx/modules/*.so /tmp/envsubst \
+      | tr ',' '\n' \
+      | sort -u \
+      | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
+  )" \
+  && apk add --no-cache --virtual .nginx-rundeps $runDeps \
+  && apk del .build-deps \
+  && apk del .gettext \
+  && mv /tmp/envsubst /usr/local/bin/ \
+  \
+  # forward request and error logs to docker log collector
+  && ln -sf /dev/stdout /var/log/nginx/access.log \
+  && ln -sf /dev/stderr /var/log/nginx/error.log
 
-# for compiling for rh-nginx110
-# yum -y install libxml2 libxslt libxml2-devel libxslt-devel gd gd-devel perl-ExtUtils-Embed
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
+COPY nginx/nginx.vh.default.conf /etc/nginx/conf.d/default.conf
 
-# for compiling for epel7
-RUN yum -y install libxml2 libxslt libxml2-devel libxslt-devel gd gd-devel perl-ExtUtils-Embed geoip geoip-devel google-perftools google-perftools-devel
+EXPOSE 80
 
-RUN mkdir -p /root/dl
-WORKDIR /root/dl
+STOPSIGNAL SIGTERM
 
-# build jansson
-ARG JANSSON_VERSION=2.10
-RUN wget https://github.com/akheron/jansson/archive/v$JANSSON_VERSION.zip && \
-	unzip v$JANSSON_VERSION.zip && \
-	rm v$JANSSON_VERSION.zip && \
-	ln -sf jansson-$JANSSON_VERSION jansson && \
-	cd /root/dl/jansson && \
-	cmake . -DJANSSON_BUILD_SHARED_LIBS=1 -DJANSSON_BUILD_DOCS=OFF && \
-	make && \
-	make check && \
-	make install
-
-# build libjwt
-ARG LIBJWT_VERSION=1.8.0
-RUN wget https://github.com/benmcollins/libjwt/archive/v$LIBJWT_VERSION.zip && \
-	unzip v$LIBJWT_VERSION.zip && \
-	rm v$LIBJWT_VERSION.zip && \
-	ln -sf libjwt-$LIBJWT_VERSION libjwt && \
-	cd /root/dl/libjwt && \
-	autoreconf -i && \
-	./configure JANSSON_CFLAGS=/usr/local/include JANSSON_LIBS=/usr/local/lib && \
-	make all && \
-	make install
-
-# get our JWT module
-# change this to get a specific version?
-#ARG TESLA_REPO_NAME=ngx-http-auth-jwt-module
-# ARG TESLA_REPO_URL_PREFIX=joefitz/
-# ARG TESLA_REPO_FILE_PREFIX=joefitz-
-# ARG TESLA_REPO_FILENAME=validate-authorization-header
-#ARG TESLA_REPO_URL_PREFIX=
-#ARG TESLA_REPO_FILE_PREFIX=
-#ARG TESLA_REPO_FILENAME=master
-#ADD https://github.com/TeslaGov/$TESLA_REPO_NAME/archive/${TESLA_REPO_URL_PREFIX}${TESLA_REPO_FILENAME}.zip .
-#RUN unzip ${TESLA_REPO_FILENAME}.zip && \
-#	rm ${TESLA_REPO_FILENAME}.zip && \
-#	ln -sf ${TESLA_REPO_NAME}-${TESLA_REPO_FILE_PREFIX}${TESLA_REPO_FILENAME} ${TESLA_REPO_NAME}
-
-ADD . /root/dl/ngx-http-auth-jwt-module
-
-# after 1.11.5 use this command
-# ./configure --with-compat --add-dynamic-module=../ngx-http-auth-jwt-module --with-cc-opt='-std=gnu99'
-# cp /root/dl/nginx/objs/ngx_http_auth_jwt_module.so /etc/nginx/modules/.
-# build nginx module against nginx sources
-#
-# 1.10.2 from nginx by default use config flags... I had to add the -std=c99 and could not achieve "binary compatibility"
-# ./configure --add-dynamic-module=../ngx-http-auth-jwt-module --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --modules-path=/usr/lib64/nginx/modules --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --pid-path=/var/run/nginx.pid --lock-path=/var/run/nginx.lock --http-client-body-temp-path=/var/cache/nginx/client_temp --http-proxy-temp-path=/var/cache/nginx/proxy_temp --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp --http-scgi-temp-path=/var/cache/nginx/scgi_temp --user=nginx --group=nginx --with-file-aio --with-threads --with-ipv6 --with-http_addition_module --with-http_auth_request_module --with-http_dav_module --with-http_flv_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_mp4_module --with-http_random_index_module --with-http_realip_module --with-http_secure_link_module --with-http_slice_module --with-http_ssl_module --with-http_stub_status_module --with-http_sub_module --with-http_v2_module --with-mail --with-mail_ssl_module --with-stream --with-stream_ssl_module --with-cc-opt='-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -m64 -mtune=generic -std=c99'
-#
-# rh-nginx110 uses these config flags
-# ./configure --add-dynamic-module=../ngx-http-auth-jwt-module --prefix=/opt/rh/rh-nginx110/root/usr/share/nginx --sbin-path=/opt/rh/rh-nginx110/root/usr/sbin/nginx --modules-path=/opt/rh/rh-nginx110/root/usr/lib64/nginx/modules --conf-path=/etc/opt/rh/rh-nginx110/nginx/nginx.conf --error-log-path=/var/opt/rh/rh-nginx110/log/nginx/error.log --http-log-path=/var/opt/rh/rh-nginx110/log/nginx/access.log --http-client-body-temp-path=/var/opt/rh/rh-nginx110/lib/nginx/tmp/client_body --http-proxy-temp-path=/var/opt/rh/rh-nginx110/lib/nginx/tmp/proxy --http-fastcgi-temp-path=/var/opt/rh/rh-nginx110/lib/nginx/tmp/fastcgi --http-uwsgi-temp-path=/var/opt/rh/rh-nginx110/lib/nginx/tmp/uwsgi --http-scgi-temp-path=/var/opt/rh/rh-nginx110/lib/nginx/tmp/scgi --pid-path=/var/opt/rh/rh-nginx110/run/nginx/nginx.pid --lock-path=/var/opt/rh/rh-nginx110/lock/subsys/nginx --user=nginx --group=nginx --with-file-aio --with-ipv6 --with-http_ssl_module --with-http_v2_module --with-http_realip_module --with-http_addition_module --with-http_xslt_module=dynamic --with-http_image_filter_module=dynamic --with-http_sub_module --with-http_dav_module --with-http_flv_module --with-http_mp4_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_random_index_module --with-http_secure_link_module --with-http_degradation_module --with-http_slice_module --with-http_stub_status_module --with-http_perl_module=dynamic --with-mail=dynamic --with-mail_ssl_module --with-pcre --with-pcre-jit --with-stream=dynamic --with-stream_ssl_module --with-debug --with-cc-opt='-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -m64 -mtune=generic -std=c99' --with-ld-opt='-Wl,-z,relro -specs=/usr/lib/rpm/redhat/redhat-hardened-ld -Wl,-E'
-#
-# epel7 version uses these config flags
-# ./configure --prefix=/usr/share/nginx --sbin-path=/usr/sbin/nginx --modules-path=/usr/lib64/nginx/modules --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --http-client-body-temp-path=/var/lib/nginx/tmp/client_body --http-proxy-temp-path=/var/lib/nginx/tmp/proxy --http-fastcgi-temp-path=/var/lib/nginx/tmp/fastcgi --http-uwsgi-temp-path=/var/lib/nginx/tmp/uwsgi --http-scgi-temp-path=/var/lib/nginx/tmp/scgi --pid-path=/run/nginx.pid --lock-path=/run/lock/subsys/nginx --user=nginx --group=nginx --with-file-aio --with-ipv6 --with-http_ssl_module --with-http_v2_module --with-http_realip_module --with-http_addition_module --with-http_xslt_module=dynamic --with-http_image_filter_module=dynamic --with-http_geoip_module=dynamic --with-http_sub_module --with-http_dav_module --with-http_flv_module --with-http_mp4_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_random_index_module --with-http_secure_link_module --with-http_degradation_module --with-http_slice_module --with-http_stub_status_module --with-http_perl_module=dynamic --with-mail=dynamic --with-mail_ssl_module --with-pcre --with-pcre-jit --with-stream=dynamic --with-stream_ssl_module --with-google_perftools_module --with-debug --with-cc-opt='-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -m64 -mtune=generic -std=gnu99' --with-ld-opt='-Wl,-z,relro -specs=/usr/lib/rpm/redhat/redhat-hardened-ld -Wl,-E'
-#
-#RUN wget http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz && \
-#	tar -xzf nginx-$NGINX_VERSION.tar.gz && \
-#	rm nginx-$NGINX_VERSION.tar.gz && \
-#	ln -sf nginx-$NGINX_VERSION nginx && \
-#	cd /root/dl/nginx && \
-#    ./configure --prefix=/usr/share/nginx --sbin-path=/usr/sbin/nginx --modules-path=/usr/lib64/nginx/modules --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --http-client-body-temp-path=/var/lib/nginx/tmp/client_body --http-proxy-temp-path=/var/lib/nginx/tmp/proxy --http-fastcgi-temp-path=/var/lib/nginx/tmp/fastcgi --http-uwsgi-temp-path=/var/lib/nginx/tmp/uwsgi --http-scgi-temp-path=/var/lib/nginx/tmp/scgi --pid-path=/run/nginx.pid --lock-path=/run/lock/subsys/nginx --user=nginx --group=nginx --with-file-aio --with-ipv6 --with-http_ssl_module --with-http_v2_module --with-http_realip_module --with-http_addition_module --with-http_xslt_module=dynamic --with-http_image_filter_module=dynamic --with-http_geoip_module=dynamic --with-http_sub_module --with-http_dav_module --with-http_flv_module --with-http_mp4_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_random_index_module --with-http_secure_link_module --with-http_degradation_module --with-http_slice_module --with-http_stub_status_module --with-http_perl_module=dynamic --with-mail=dynamic --with-mail_ssl_module --with-pcre --with-pcre-jit --with-stream=dynamic --with-stream_ssl_module --with-google_perftools_module --with-debug --with-cc-opt='-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -m64 -mtune=generic -std=gnu99' --with-ld-opt='-Wl,-z,relro -specs=/usr/lib/rpm/redhat/redhat-hardened-ld -Wl,-E' && \
-#	make modules && \
-#	cp /root/dl/nginx/objs/ngx_http_auth_jwt_module.so /usr/lib64/nginx/modules/.
-
-# ARG CACHEBUST=1
-
-RUN wget http://nginx.org/download/nginx-$NGINX_VERSION.tar.gz && \
-	tar -xzf nginx-$NGINX_VERSION.tar.gz && \
-	rm nginx-$NGINX_VERSION.tar.gz && \
-	ln -sf nginx-$NGINX_VERSION nginx && \
-    cd /root/dl/nginx && \
-    ./configure --add-dynamic-module=../ngx-http-auth-jwt-module --prefix=/usr/share/nginx --sbin-path=/usr/sbin/nginx --modules-path=/usr/lib64/nginx/modules --conf-path=/etc/nginx/nginx.conf --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --http-client-body-temp-path=/var/lib/nginx/tmp/client_body --http-proxy-temp-path=/var/lib/nginx/tmp/proxy --http-fastcgi-temp-path=/var/lib/nginx/tmp/fastcgi --http-uwsgi-temp-path=/var/lib/nginx/tmp/uwsgi --http-scgi-temp-path=/var/lib/nginx/tmp/scgi --pid-path=/run/nginx.pid --lock-path=/run/lock/subsys/nginx --user=nginx --group=nginx --with-file-aio --with-ipv6 --with-http_ssl_module --with-http_v2_module --with-http_realip_module --with-http_addition_module --with-http_xslt_module=dynamic --with-http_image_filter_module=dynamic --with-http_geoip_module=dynamic --with-http_sub_module --with-http_dav_module --with-http_flv_module --with-http_mp4_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_random_index_module --with-http_secure_link_module --with-http_degradation_module --with-http_slice_module --with-http_stub_status_module --with-http_perl_module=dynamic --with-mail=dynamic --with-mail_ssl_module --with-pcre --with-pcre-jit --with-stream=dynamic --with-stream_ssl_module --with-google_perftools_module --with-debug --with-cc-opt='-O2 -g -pipe -Wall -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -specs=/usr/lib/rpm/redhat/redhat-hardened-cc1 -m64 -mtune=generic -std=gnu99' --with-ld-opt='-Wl,-z,relro -specs=/usr/lib/rpm/redhat/redhat-hardened-ld -Wl,-E' && \
-    make modules && \
-	cp /root/dl/nginx/objs/ngx_http_auth_jwt_module.so /usr/lib64/nginx/modules/.
-
-# Get nginx ready to run
-COPY resources/nginx.conf /etc/nginx/nginx.conf
-COPY resources/test-jwt-nginx.conf /etc/nginx/conf.d/test-jwt-nginx.conf
-RUN cp -r /usr/share/nginx/html /usr/share/nginx/secure
-RUN cp -r /usr/share/nginx/html /usr/share/nginx/secure-auth-header
-RUN cp -r /usr/share/nginx/html /usr/share/nginx/secure-no-redirect
-
-ENTRYPOINT ["/usr/sbin/nginx"]
-#ENTRYPOINT ["while true; do echo hello world; sleep 1; done"]
-
-EXPOSE 8000
+CMD ["nginx", "-g", "daemon off;"]
