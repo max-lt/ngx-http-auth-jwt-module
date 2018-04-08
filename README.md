@@ -1,3 +1,33 @@
+# About this fork
+
+Original repository is https://github.com/TeslaGov/ngx-http-auth-jwt-module
+
+### Changes: 
+ - Rebased build on [official nginx Dockerfile](https://github.com/nginxinc/docker-nginx) (alpine) so some modules have been 
+ removed (pcre, pcre-jit, debug, http_xslt_module, google_perftools_module, ...)
+ - Significantly lighter image (uncompressed: ~780MB -> ~17MB, compressed: ~280MB -> ~7MB)
+ - Added development intermediates Docker images (in `devel` dir).
+ 
+### Build:
+```bash
+./build.sh # Will create a "jwt-nginx" (Dockerfile)
+```
+ 
+### Test:
+```bash
+./test.sh # Will create a "jwt-nginx-test" image from the "jwt-nginx" one (Dockerfile.test)
+```
+or
+```bash
+./test.sh your-image-to-test
+```
+example: 
+```bash
+./test.sh jwt-nginx-s3 # tests the development image
+```
+
+<hr>
+
 # Intro
 This is an NGINX module to check for a valid JWT and proxy to an upstream server or redirect to a login page.
 
