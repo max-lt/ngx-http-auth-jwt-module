@@ -60,6 +60,8 @@ RUN  JWT_AUTH_MODULE=ngx_http_auth_jwt_module \
   " \
   && addgroup -S nginx \
   && adduser -D -S -h /var/cache/nginx -s /sbin/nologin -G nginx nginx \
+  \
+  # Extra runtime depency for libjwt
   && apk add --no-cache jansson-dev \
   && apk add --no-cache --virtual .build-deps \
     gcc \
@@ -75,7 +77,7 @@ RUN  JWT_AUTH_MODULE=ngx_http_auth_jwt_module \
     gd-dev \
     geoip-dev \
   \
-  # Extra depencies for libjwt
+  # Extra build depencies for libjwt
     autoconf automake libtool cmake check-dev \
   \
   # BEGIN libjwt install

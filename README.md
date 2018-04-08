@@ -7,6 +7,7 @@ Original repository is https://github.com/TeslaGov/ngx-http-auth-jwt-module
  removed (pcre, pcre-jit, debug, http_xslt_module, google_perftools_module, ...)
  - Significantly lighter image (uncompressed: ~780MB -> ~17MB, compressed: ~280MB -> ~7MB)
  - Copied the "nginx" directory from the [official nginx Dockerfile](https://github.com/nginxinc/docker-nginx) to reproduce official image.
+ - Added development intermediates Docker images (in `devel` dir).
  
 ### Build:
 ```bash
@@ -16,6 +17,14 @@ Original repository is https://github.com/TeslaGov/ngx-http-auth-jwt-module
 ### Test:
 ```bash
 ./test.sh # Will create a "jwt-nginx-test" image from the "jwt-nginx" one (Dockerfile.test)
+```
+or
+```bash
+./test.sh your-image-to-test
+```
+example: 
+```bash
+./test.sh jwt-nginx-s3 # tests the development image
 ```
 
 <hr>

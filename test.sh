@@ -4,13 +4,19 @@ RED='\033[01;31m'
 GREEN='\033[01;32m'
 NONE='\033[00m'
 
-# build test image
-DOCKER_IMAGE_NAME=jwt-nginx-test
-docker build -f Dockerfile.test -t ${DOCKER_IMAGE_NAME} .
-if [ $? -ne 0 ]
-then
-  echo -e "${RED}Build Failed${NONE}";
-  exit 1;
+# build test image if no image name passed
+if [ -z "$1" ]; then
+  echo "Building test image from jwt-nginx"
+  DOCKER_IMAGE_NAME=jwt-nginx-test
+  docker build -f Dockerfile.test -t ${DOCKER_IMAGE_NAME} .
+  if [ $? -ne 0 ]
+  then
+    echo -e "${RED}Build Failed${NONE}";
+    exit 1;
+  fi
+else
+  DOCKER_IMAGE_NAME=$1
+  echo "Using image ${DOCKER_IMAGE_NAME} for tests"
 fi
 
 DOCKER_CONTAINER_NAME=${DOCKER_IMAGE_NAME}-cont
@@ -18,8 +24,6 @@ CONTAINER_ID=$(docker run --rm --name "${DOCKER_CONTAINER_NAME}" -d -p 8000:8000
 
 #MACHINE_IP=`docker-machine ip`
 MACHINE_IP=localhost
-
-docker cp ${CONTAINER_ID}:/usr/lib/nginx/modules/ngx_http_auth_jwt_module.so .
 
 VALIDJWT=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJzb21lLWxvbmctdXVpZCIsImZpcnN0TmFtZSI6ImhlbGxvIiwgImxhc3ROYW1lIjoid29ybGQiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb3dvcmxkQGV4YW1wbGUuY29tIiwgInJvbGVzIjpbInRoaXMiLCJ0aGF0IiwidGhlb3RoZXIiXSwgImlzcyI6Imlzc3VlciIsInBlcnNvbklkIjoiNzViYjNjYzctYjkzMy00NGYwLTkzYzYtMTQ3YjA4MmZhZGI1IiwgImV4cCI6MTkwODgzNTIwMCwiaWF0IjoxNDg4ODE5NjAwLCJ1c2VybmFtZSI6ImhlbGxvLndvcmxkIn0.TvDD63ZOqFKgE-uxPDdP5aGIsbl5xPKz4fMul3Zlti4
 
@@ -65,4 +69,4 @@ else
   echo -e "${RED}Secure test without jwt no redirect fail ${TEST_SECURE_NO_REDIRECT_EXPECT_401}${NONE}";
 fi
 
-docker stop ${DOCKER_CONTAINER_NAME}
+docker stop ${DOCKER_CONTAINER_NAME} > /dev/null

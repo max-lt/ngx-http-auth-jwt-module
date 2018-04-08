@@ -11,3 +11,7 @@ then
   echo -e "${RED}Build Failed${NONE}";
   exit 1;
 fi
+
+# Copy newly generated module in the repository
+JWT_MODULE=ngx_http_auth_jwt_module.so
+docker run ${DOCKER_IMAGE_NAME} cat /usr/lib/nginx/modules/${JWT_MODULE} > ${JWT_MODULE}

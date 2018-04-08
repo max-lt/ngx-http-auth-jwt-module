@@ -1,0 +1,6 @@
+Dockerfile
+Dockerfile.old
+Dockerfile.test
+*.sh
+*.so
+devel/

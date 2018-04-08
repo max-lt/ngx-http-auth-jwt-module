@@ -1,0 +1,30 @@
+FROM alpine:3.5
+
+LABEL maintainer="TeslaGov" email="developers@teslagov.com"
+
+ARG NGINX_VERSION=1.12.2
+
+ENV LD_LIBRARY_PATH=/usr/local/lib
+
+ADD tmp /tmp/ngx-http-auth-jwt-module
+
+RUN apk update
+RUN apk add --virtual .build-deps\
+    gcc \
+    libc-dev \
+    make \
+    openssl-dev \
+    pcre-dev \
+    zlib-dev \
+    linux-headers \
+    curl \
+    gnupg \
+    libxslt-dev \
+    gd-dev \
+    geoip-dev \
+    \
+    # libjwt build deps
+    autoconf automake libtool cmake check-dev
+
+# libjwt runtim deps
+RUN apk add jansson-dev
