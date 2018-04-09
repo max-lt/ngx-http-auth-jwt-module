@@ -22,14 +22,19 @@ case "$STEP" in
     echo "done step 1"
     ;&
    "s2")
-    echo "Step 2: build nginx"
+    echo "Step 2: get nginx"
     docker build --file Dockerfile.s2 -t jwt-nginx-s2 .
     echo "done step 2"
     ;&
    "s3" )
-    echo "Step 3: copy test files"
+    echo "Step 3: build nginx"
     docker build --file Dockerfile.s3 -t jwt-nginx-s3 .
     echo "done step 3"
+    ;&
+   "s4" )
+    echo "Step 4: copy test files"
+    docker build --file Dockerfile.s4 -t jwt-nginx-s4 .
+    echo "done step 4"
     ;;
 esac
 

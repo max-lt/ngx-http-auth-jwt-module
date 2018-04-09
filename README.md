@@ -9,6 +9,7 @@ Original repository is https://github.com/TeslaGov/ngx-http-auth-jwt-module
  - Added development intermediates Docker images (in `devel` dir).
  - The "emailAddress" field is no longer required ("sub" is still).
  - The "sub" field is still required, the module now returns a 403 status if missing (instead of 401 / redirect).
+ - Removed `auth_jwt_redirect` and `auth_jwt_loginurl` directives, use the `error_page` one instead (example in resources/test-jwt-nginx.conf).
  
 ### Build:
 ```bash
