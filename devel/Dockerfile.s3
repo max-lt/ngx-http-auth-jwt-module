@@ -16,4 +16,6 @@ RUN cp -r /usr/share/nginx/html /usr/share/nginx/secure-no-redirect
 
 EXPOSE 8000
 
-CMD ["nginx"]
+STOPSIGNAL SIGTERM
+
+CMD ["nginx", "-g", "daemon off;"]

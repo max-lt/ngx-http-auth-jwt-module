@@ -130,7 +130,7 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 	jwtCookieValChrPtr = getJwt(r, jwtcf->auth_jwt_validation_type);
 	if (jwtCookieValChrPtr == NULL)
 	{
-		ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to find a jwt");
+		ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "failed to find a jwt");
 		goto redirect;
 	}
 
@@ -138,7 +138,7 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 	keyBinary = ngx_palloc(r->pool, jwtcf->auth_jwt_key.len / 2);
 	if (0 != hex_to_binary((char *)jwtcf->auth_jwt_key.data, keyBinary, jwtcf->auth_jwt_key.len))
 	{
-		ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to turn hex key into binary");
+		ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "failed to turn hex key into binary");
 		goto redirect;
 	}
 
@@ -146,7 +146,7 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 	jwtParseReturnCode = jwt_decode(&jwt, jwtCookieValChrPtr, keyBinary, jwtcf->auth_jwt_key.len / 2);
 	if (jwtParseReturnCode != 0)
 	{
-		ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to parse jwt");
+		ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "failed to parse jwt");
 		goto redirect;
 	}
 
@@ -154,7 +154,7 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 	alg = jwt_get_alg(jwt);
 	if (alg != JWT_ALG_HS256)
 	{
-		ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "invalid algorithm in jwt %d", alg);
+		ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "invalid algorithm in jwt %d", alg);
 		goto redirect;
 	}
 
@@ -163,7 +163,7 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 	now = time(NULL);
 	if (exp < now)
 	{
-		ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "the jwt has expired");
+		ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "the jwt has expired");
 		goto redirect;
 	}
 
@@ -171,7 +171,7 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 	sub = jwt_get_grant(jwt, "sub");
 	if (sub == NULL)
 	{
-		ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "the jwt does not contain a subject");
+		ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "the jwt does not contain a subject");
 		return NGX_HTTP_FORBIDDEN;
 	}
   sub_t = ngx_char_ptr_to_str_t(r->pool, (char *)sub);
@@ -346,7 +346,7 @@ static char * getJwt(ngx_http_request_t *r, ngx_str_t auth_jwt_validation_type)
 	ngx_int_t n;
 	ngx_str_t authorizationHeaderStr;
 
-	ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "auth_jwt_validation_type.len %d", auth_jwt_validation_type.len);
+	ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "auth_jwt_validation_type.len %d", auth_jwt_validation_type.len);
 
 	if (auth_jwt_validation_type.len == 0 || (auth_jwt_validation_type.len == sizeof("AUTHORIZATION") - 1 && ngx_strncmp(auth_jwt_validation_type.data, "AUTHORIZATION", sizeof("AUTHORIZATION") - 1)==0))
 	{
@@ -354,14 +354,14 @@ static char * getJwt(ngx_http_request_t *r, ngx_str_t auth_jwt_validation_type)
 		authorizationHeader = search_headers_in(r, authorizationHeaderName.data, authorizationHeaderName.len);
 		if (authorizationHeader != NULL)
 		{
-			ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "Found authorization header len %d", authorizationHeader->value.len);
+			ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "Found authorization header len %d", authorizationHeader->value.len);
 
 			authorizationHeaderStr.data = authorizationHeader->value.data + sizeof("Bearer ") - 1;
 			authorizationHeaderStr.len = authorizationHeader->value.len - (sizeof("Bearer ") - 1);
 
 			jwtCookieValChrPtr = ngx_str_t_to_char_ptr(r->pool, authorizationHeaderStr);
 
-			ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "Authorization header: %s", jwtCookieValChrPtr);
+			ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "Authorization header: %s", jwtCookieValChrPtr);
 		}
 	}
 	else if (auth_jwt_validation_type.len > sizeof("COOKIE=") && ngx_strncmp(auth_jwt_validation_type.data, "COOKIE=", sizeof("COOKIE=") - 1)==0)

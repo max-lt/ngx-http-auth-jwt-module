@@ -11,4 +11,4 @@ EXPOSE 8000
 
 STOPSIGNAL SIGTERM
 
-CMD ["nginx"]
+CMD ["nginx", "-g", "daemon off;"]
