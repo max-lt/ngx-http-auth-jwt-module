@@ -172,11 +172,12 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 	if (sub == NULL)
 	{
 		ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "the jwt does not contain a subject");
-		return NGX_HTTP_FORBIDDEN;
 	}
-  sub_t = ngx_char_ptr_to_str_t(r->pool, (char *)sub);
-  set_custom_header_in_headers_out(r, &useridHeaderName, &sub_t);
-
+	else
+	{
+		sub_t = ngx_char_ptr_to_str_t(r->pool, (char *)sub);
+		set_custom_header_in_headers_out(r, &useridHeaderName, &sub_t);
+	}
 
 
 	return NGX_OK;
