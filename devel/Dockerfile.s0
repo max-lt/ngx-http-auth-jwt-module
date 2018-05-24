@@ -2,8 +2,6 @@ FROM alpine:3.7
 
 LABEL maintainer="TeslaGov" email="developers@teslagov.com"
 
-ENV LD_LIBRARY_PATH=/usr/local/lib
-
 RUN apk update
 RUN apk add --virtual .build-deps\
     gcc \

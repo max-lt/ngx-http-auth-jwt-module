@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+SCRIPT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
+
+cd ${SCRIPT_PATH}
+
 # usage: ./build.sh [sX] # With X the step to begin with (default 0)
 
 set -e
@@ -26,7 +30,7 @@ case "$STEP" in
     docker build --file Dockerfile.s2 -t jwt-nginx-s2 .
     echo "done step 2"
     ;&
-   "s3" )
+   "s3")
     echo "Step 3: build nginx"
     docker build --file Dockerfile.s3 -t jwt-nginx-s3 .
     echo "done step 3"
@@ -35,6 +39,10 @@ case "$STEP" in
     echo "Step 4: copy test files"
     docker build --file Dockerfile.s4 -t jwt-nginx-s4 .
     echo "done step 4"
+    ;;
+   * )
+    echo "Invalid step $STEP"
+    exit 1
     ;;
 esac
 
