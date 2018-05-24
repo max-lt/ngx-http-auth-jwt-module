@@ -2,10 +2,6 @@ FROM alpine:3.7
 
 LABEL maintainer="TeslaGov" email="developers@teslagov.com"
 
-ENV LD_LIBRARY_PATH=/usr/local/lib
-
-ADD tmp /tmp/ngx-http-auth-jwt-module
-
 RUN apk update
 RUN apk add --virtual .build-deps\
     gcc \
