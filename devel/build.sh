@@ -26,7 +26,7 @@ case "$STEP" in
     echo "done step 1"
     ;&
    "s2")
-    echo "Step 2: download nginx"
+    echo "Step 2: get nginx"
     docker build --file Dockerfile.s2 -t jwt-nginx-s2 .
     echo "done step 2"
     ;&

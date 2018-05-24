@@ -13,4 +13,6 @@ COPY tmp/resources/test-jwt-nginx.conf /etc/nginx/conf.d/test-jwt-nginx.conf
 
 EXPOSE 8000
 
-CMD ["nginx"]
+STOPSIGNAL SIGTERM
+
+CMD ["nginx", "-g", "daemon off;"]
