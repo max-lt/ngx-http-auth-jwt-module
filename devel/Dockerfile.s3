@@ -10,7 +10,9 @@ ARG JWT_AUTH_MODULE=ngx_http_auth_jwt_module
 
 ARG JWT_MODULE_PATH=/usr/local/lib/ngx-http-auth-jwt-module
 
-RUN mkdir -p ${MODULE_PATH}
+RUN mkdir -p $JWT_MODULE_PATH
+
+ADD tmp $JWT_MODULE_PATH
 
 ENV CONFIG="\
   --prefix=/etc/nginx \

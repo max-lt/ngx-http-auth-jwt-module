@@ -2,14 +2,6 @@ FROM alpine:3.7
 
 LABEL maintainer="TeslaGov" email="developers@teslagov.com"
 
-ARG JWT_MODULE_PATH=/usr/local/lib/ngx-http-auth-jwt-module
-
-RUN mkdir -p $JWT_MODULE_PATH
-
-ADD tmp $JWT_MODULE_PATH
-
-RUN ls $JWT_MODULE_PATH
-
 RUN apk update
 RUN apk add --virtual .build-deps\
     gcc \
