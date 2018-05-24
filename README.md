@@ -23,7 +23,7 @@ or
 ```
 example: 
 ```bash
-./test.sh jwt-nginx-s3 # tests the development image
+./test.sh jwt-nginx-s4 # tests the development image
 ```
 
 <hr>

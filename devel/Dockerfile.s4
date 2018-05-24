@@ -1,0 +1,16 @@
+FROM jwt-nginx-s3
+
+ENV NGINX_DIR=/usr/share/nginx/html
+
+# Cleanup
+RUN  apk del .build-deps \
+  && apk del .gettext \
+  && rm -rf /tmp/*
+
+# Get nginx ready to run
+COPY tmp/resources/nginx.conf /etc/nginx/nginx.conf
+COPY tmp/resources/test-jwt-nginx.conf /etc/nginx/conf.d/test-jwt-nginx.conf
+
+EXPOSE 8000
+
+CMD ["nginx"]
