@@ -7,6 +7,7 @@ Original repository is https://github.com/TeslaGov/ngx-http-auth-jwt-module
  removed (pcre, pcre-jit, debug, http_xslt_module, google_perftools_module, ...)
  - Significantly lighter image (uncompressed: ~780MB -> ~17MB, compressed: ~280MB -> ~7MB)
  - Added development intermediates Docker images (in `devel` dir).
+ - The "emailAddress" field is no longer used ("sub" is still).
  
 ### Build:
 ```bash
