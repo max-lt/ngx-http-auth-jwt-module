@@ -23,7 +23,6 @@ typedef struct {
 	ngx_flag_t   auth_jwt_enabled;
 	ngx_str_t    auth_jwt_validation_type;
 	ngx_str_t    auth_jwt_algorithm;
-	ngx_flag_t   auth_jwt_validate_email;
 
 } ngx_http_auth_jwt_loc_conf_t;
 
@@ -61,13 +60,6 @@ static ngx_command_t ngx_http_auth_jwt_commands[] = {
 		ngx_conf_set_str_slot,
 		NGX_HTTP_LOC_CONF_OFFSET,
 		offsetof(ngx_http_auth_jwt_loc_conf_t, auth_jwt_algorithm),
-		NULL },
-
-	{ ngx_string("auth_jwt_validate_email"),
-		NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
-		ngx_conf_set_flag_slot,
-		NGX_HTTP_LOC_CONF_OFFSET,
-		offsetof(ngx_http_auth_jwt_loc_conf_t, auth_jwt_validate_email),
 		NULL },
 
 	ngx_null_command
@@ -120,7 +112,7 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 	time_t now;
 	ngx_str_t auth_jwt_algorithm;
 	int keylen;
-	
+
 	jwtcf = ngx_http_get_module_loc_conf(r, ngx_http_auth_jwt_module);
 
 	if (!jwtcf->auth_jwt_enabled)
@@ -134,7 +126,7 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 		ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "failed to find a jwt");
 		return NGX_HTTP_UNAUTHORIZED;
 	}
-	
+
 	// convert key from hex to binary, if a symmetric key
 
 	auth_jwt_algorithm = jwtcf->auth_jwt_algorithm;
@@ -158,7 +150,7 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 	else
 	{
 		ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "unsupported algorithm");
-		retutn NGX_HTTP_UNAUTHORIZED;
+		return NGX_HTTP_UNAUTHORIZED;
 	}
 
 	// validate the jwt
@@ -191,14 +183,12 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 	if (sub == NULL)
 	{
 		ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "the jwt does not contain a subject");
-		return NGX_HTTP_FORBIDDEN;
 	}
 	else
 	{
 		sub_t = ngx_char_ptr_to_str_t(r->pool, (char *)sub);
 		set_custom_header_in_headers_out(r, &useridHeaderName, &sub_t);
 	}
-
 
 	return NGX_OK;
 }
