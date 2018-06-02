@@ -103,7 +103,7 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 	char* jwtCookieValChrPtr;
 	ngx_http_auth_jwt_loc_conf_t *jwtcf;
 	u_char *keyBinary;
-	jwt_t *jwt;
+	jwt_t *jwt = NULL;
 	int jwtParseReturnCode;
 	jwt_alg_t alg;
 	const char* sub;
