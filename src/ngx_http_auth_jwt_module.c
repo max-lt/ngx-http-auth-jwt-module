@@ -22,8 +22,6 @@ typedef struct {
 	ngx_str_t    auth_jwt_key;
 	ngx_flag_t   auth_jwt_enabled;
 	ngx_str_t    auth_jwt_validation_type;
-	ngx_str_t    auth_jwt_algorithm;
-
 } ngx_http_auth_jwt_loc_conf_t;
 
 static ngx_int_t ngx_http_auth_jwt_init(ngx_conf_t *cf);
@@ -53,13 +51,6 @@ static ngx_command_t ngx_http_auth_jwt_commands[] = {
 		ngx_conf_set_str_slot,
 		NGX_HTTP_LOC_CONF_OFFSET,
 		offsetof(ngx_http_auth_jwt_loc_conf_t, auth_jwt_validation_type),
-		NULL },
-
-	{ ngx_string("auth_jwt_algorithm"),
-		NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-		ngx_conf_set_str_slot,
-		NGX_HTTP_LOC_CONF_OFFSET,
-		offsetof(ngx_http_auth_jwt_loc_conf_t, auth_jwt_algorithm),
 		NULL },
 
 	ngx_null_command
@@ -110,8 +101,6 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 	ngx_str_t sub_t;
 	time_t exp;
 	time_t now;
-	ngx_str_t auth_jwt_algorithm;
-	int keylen;
 
 	jwtcf = ngx_http_get_module_loc_conf(r, ngx_http_auth_jwt_module);
 
@@ -129,31 +118,15 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 
 	// convert key from hex to binary, if a symmetric key
 
-	auth_jwt_algorithm = jwtcf->auth_jwt_algorithm;
-	if (auth_jwt_algorithm.len == 0 || (auth_jwt_algorithm.len == sizeof("HS256") - 1 && ngx_strncmp(auth_jwt_algorithm.data, "HS256", sizeof("HS256") - 1)==0))
+  keyBinary = ngx_palloc(r->pool, jwtcf->auth_jwt_key.len / 2);
+  if (0 != hex_to_binary((char *)jwtcf->auth_jwt_key.data, keyBinary, jwtcf->auth_jwt_key.len))
 	{
-		keylen = jwtcf->auth_jwt_key.len / 2;
-		keyBinary = ngx_palloc(r->pool, keylen);
-		if (0 != hex_to_binary((char *)jwtcf->auth_jwt_key.data, keyBinary, jwtcf->auth_jwt_key.len))
-		{
-			ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to turn hex key into binary");
-			return NGX_HTTP_UNAUTHORIZED;
-		}
-	}
-	else if ( auth_jwt_algorithm.len == sizeof("RS256") - 1 && ngx_strncmp(auth_jwt_algorithm.data, "RS256", sizeof("RS256") - 1) == 0 )
-	{
-		// in this case, 'Binary' is a misnomer, as it is the public key string itself
-		keyBinary = jwtcf->auth_jwt_key.data;
-		keylen = jwtcf->auth_jwt_key.len;
-	}
-	else
-	{
-		ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "unsupported algorithm");
+		ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "failed to turn hex key into binary");
 		return NGX_HTTP_UNAUTHORIZED;
 	}
 
 	// validate the jwt
-	jwtParseReturnCode = jwt_decode(&jwt, jwtCookieValChrPtr, keyBinary, keylen);
+	jwtParseReturnCode = jwt_decode(&jwt, jwtCookieValChrPtr, keyBinary, jwtcf->auth_jwt_key.len / 2);
 	if (jwtParseReturnCode != 0)
 	{
 		ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "failed to parse jwt");
@@ -162,7 +135,7 @@ static ngx_int_t ngx_http_auth_jwt_handler(ngx_http_request_t *r)
 
 	// validate the algorithm
 	alg = jwt_get_alg(jwt);
-	if (alg != JWT_ALG_HS256 && alg != JWT_ALG_RS256)
+	if (alg != JWT_ALG_HS256)
 	{
 		ngx_log_error(NGX_LOG_WARN, r->connection->log, 0, "invalid algorithm in jwt %d", alg);
 		return NGX_HTTP_UNAUTHORIZED;
@@ -240,7 +213,6 @@ ngx_http_auth_jwt_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 	ngx_conf_merge_str_value(conf->auth_jwt_key, prev->auth_jwt_key, "");
 	ngx_conf_merge_str_value(conf->auth_jwt_validation_type, prev->auth_jwt_validation_type, "");
-	ngx_conf_merge_str_value(conf->auth_jwt_algorithm, prev->auth_jwt_algorithm, "HS256");
 
 	if (conf->auth_jwt_enabled == ((ngx_flag_t) -1))
 	{
@@ -293,7 +265,3 @@ static char * getJwt(ngx_http_request_t *r, ngx_str_t auth_jwt_validation_type)
 
 	return jwtCookieValChrPtr;
 }
-
-
-
-

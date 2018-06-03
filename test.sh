@@ -93,11 +93,4 @@ else
   echo -e "${RED}Secure test with jwt cookie fail ${TEST_WITH_NO_EMAIL_EXPECT_200}${NONE}";
 fi
 
-TEST_SECURE_RS256_COOKIE_EXPECT_200=`curl -X GET -o /dev/null --silent --head --write-out '%{http_code}\n' http://${MACHINE_IP}:8000/secure-rs256/index.html -H 'cache-control: no-cache' --cookie "rampartjwt=${VALID_RS256_JWT}"`
-if [ "$TEST_SECURE_RS256_COOKIE_EXPECT_200" -eq "200" ];then
-  echo -e "${GREEN}Secure test with rs256 jwt cookie pass ${TEST_SECURE_RS256_COOKIE_EXPECT_200}${NONE}";
-else
-  echo -e "${RED}Secure test with rs256 jwt cookie fail ${TEST_SECURE_RS256_COOKIE_EXPECT_200}${NONE}";
-fi
-
 docker stop ${DOCKER_CONTAINER_NAME} > /dev/null

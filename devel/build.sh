@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 SCRIPT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
@@ -10,6 +10,8 @@ set -e
 
 # STEP from first arg, defaulting to step 0
 STEP=${1:-"s0"}
+BRANCH=$(git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
+BRANCH=${BRANCH:-undefined}
 
 # Copy resources in docker's scope
 mkdir -p tmp && cp -r ../config ../resources ../src tmp
@@ -45,5 +47,11 @@ case "$STEP" in
     exit 1
     ;;
 esac
+
+docker tag jwt-nginx-s0 jwt-nginx-s0:$BRANCH
+docker tag jwt-nginx-s1 jwt-nginx-s1:$BRANCH
+docker tag jwt-nginx-s2 jwt-nginx-s2:$BRANCH
+docker tag jwt-nginx-s3 jwt-nginx-s3:$BRANCH
+docker tag jwt-nginx-s4 jwt-nginx-s4:$BRANCH
 
 rm -rf tmp
