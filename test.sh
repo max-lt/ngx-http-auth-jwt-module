@@ -6,8 +6,11 @@ RED='\033[01;31m'
 GREEN='\033[01;32m'
 NONE='\033[00m'
 
+# use an already running container
+if [[ "$1" == "--current" ]]; then
+  DOCKER_CONTAINER_NAME=0
 # build test image if no image name passed
-if [ -z "$1" ]; then
+elif [ -z "$1" ]; then
   echo "Building test image from jwt-nginx"
   DOCKER_IMAGE_NAME=jwt-nginx-test
   docker build -f Dockerfile.test -t ${DOCKER_IMAGE_NAME} .
@@ -16,13 +19,17 @@ if [ -z "$1" ]; then
     echo -e "${RED}Build Failed${NONE}";
     exit 1;
   fi
+# use a specific image
 else
   DOCKER_IMAGE_NAME=$1
   echo "Using image ${DOCKER_IMAGE_NAME} for tests"
+  shift
 fi
 
-DOCKER_CONTAINER_NAME=${DOCKER_IMAGE_NAME}-cont
-CONTAINER_ID=$(docker run --rm --name "${DOCKER_CONTAINER_NAME}" -d -p 8000:8000 ${DOCKER_IMAGE_NAME})
+if [[ "$DOCKER_CONTAINER_NAME" != 0 ]]; then
+  DOCKER_CONTAINER_NAME=container-${DOCKER_IMAGE_NAME}
+  docker run --rm --name "${DOCKER_CONTAINER_NAME}" -d -p 8000:8000 ${DOCKER_IMAGE_NAME}
+fi
 
 if [[ "$OSTYPE" == "darwin"* ]] || [[ "$OSTYPE" == "linux"* ]]; then
   # Mac OSX / Linux
@@ -93,4 +100,7 @@ else
   echo -e "${RED}Secure test with jwt cookie fail ${TEST_WITH_NO_EMAIL_EXPECT_200}${NONE}";
 fi
 
-docker stop ${DOCKER_CONTAINER_NAME} > /dev/null
+if [[ "$DOCKER_CONTAINER_NAME" != 0 ]]; then
+  echo stopping container $DOCKER_CONTAINER_NAME
+  docker stop ${DOCKER_CONTAINER_NAME} > /dev/null
+fi
