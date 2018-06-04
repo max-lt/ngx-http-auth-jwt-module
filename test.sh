@@ -44,61 +44,37 @@ MISSING_SUB_JWT=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmaXJzdE5hbWUiOiJoZWxsbyI
 MISSING_EMAIL_JWT=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzb21lLWxvbmctdXVpZCIsImZpcnN0TmFtZSI6ImhlbGxvIiwibGFzdE5hbWUiOiJ3b3JsZCIsInJvbGVzIjpbInRoaXMiLCJ0aGF0IiwidGhlb3RoZXIiXSwiaXNzIjoiaXNzdWVyIiwicGVyc29uSWQiOiI3NWJiM2NjNy1iOTMzLTQ0ZjAtOTNjNi0xNDdiMDgyZmFkYjUiLCJleHAiOjE5MDg4MzUyMDAsImlhdCI6MTQ4ODgxOTYwMCwidXNlcm5hbWUiOiJoZWxsby53b3JsZCJ9.tJoAl_pvq95hK7GKqsp5TU462pLTbmSYZc1fAHzcqWM
 VALID_RS256_JWT=eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzb21lLWxvbmctdXVpZCIsImZpcnN0TmFtZSI6ImhlbGxvIiwgImxhc3ROYW1lIjoid29ybGQiLCJlbWFpbEFkZHJlc3MiOiJoZWxsb3dvcmxkQGV4YW1wbGUuY29tIiwgInJvbGVzIjpbInRoaXMiLCJ0aGF0IiwidGhlb3RoZXIiXSwgImlzcyI6Imlzc3VlciIsInBlcnNvbklkIjoiNzViYjNjYzctYjkzMy00NGYwLTkzYzYtMTQ3YjA4MmZhZGI1IiwgImV4cCI6MTkwODgzNTIwMCwiaWF0IjoxNDg4ODE5NjAwLCJ1c2VybmFtZSI6ImhlbGxvLndvcmxkIn0.cn5Gb75XL-r7TMsPuqzWoKZ06ZsyF_VZIG0Ohn8uZZFeF8dFUhSrEOYe8WFN6Eon8a8LC0OCI9eNdGiD4m_e9TD1Iz2juqaeos-6yd7SWuODr4YS8KD3cqfXndnLRPzp9PC_UIpATsbqOmxGDrRKvHsQq0TuIXImU3rM_m3kFJFgtoJFHx3KmZUo_Ozkyhhc6Pukikhy6odNAtEyLHP5_tabMXtkeAuIlG8dhjAxef4mJLexYFclG-vl7No5VBU4JrMbfgyxtobcYoE-bDIpmQHywrwo6Li7X0hgHJ17sfS3G2YMHmE-Ij_W2Lf9kf5r2r12DUvg44SLIfM58pCINQ
 
-TEST_INSECURE_EXPECT_200=`curl -X GET -o /dev/null --silent --head --write-out '%{http_code}\n' http://${MACHINE_IP}:8000 -H 'cache-control: no-cache'`
-if [ "$TEST_INSECURE_EXPECT_200" -eq "200" ];then
-  echo -e "${GREEN}Insecure test pass ${TEST_INSECURE_EXPECT_200}${NONE}";
-else
-  echo -e "${RED}Insecure test fail ${TEST_INSECURE_EXPECT_200}${NONE}";
-fi
+test_jwt () {
+  name=$1
+  path=$2
+  expect=$3
+  extra=$4
 
-TEST_SECURE_COOKIE_EXPECT_302=`curl -X GET -o /dev/null --silent --head --write-out '%{http_code}\n' http://${MACHINE_IP}:8000/secure/index.html -H 'cache-control: no-cache'`
-if [ "$TEST_SECURE_COOKIE_EXPECT_302" -eq "302" ];then
-  echo -e "${GREEN}Secure test without jwt cookie pass ${TEST_SECURE_COOKIE_EXPECT_302}${NONE}";
-else
-  echo -e "${RED}Secure test without jwt cookie fail ${TEST_SECURE_COOKIE_EXPECT_302}${NONE}";
-fi
+  cmd="curl -X GET -o /dev/null --silent --head --write-out '%{http_code}' http://$MACHINE_IP:8000$path -H 'cache-control: no-cache' $extra"
 
-TEST_SECURE_COOKIE_EXPECT_200=`curl -X GET -o /dev/null --silent --head --write-out '%{http_code}\n' http://${MACHINE_IP}:8000/secure/index.html -H 'cache-control: no-cache' --cookie "rampartjwt=${VALIDJWT}"`
-if [ "$TEST_SECURE_COOKIE_EXPECT_200" -eq "200" ];then
-  echo -e "${GREEN}Secure test with jwt cookie pass ${TEST_SECURE_COOKIE_EXPECT_200}${NONE}";
-else
-  echo -e "${RED}Secure test with jwt cookie fail ${TEST_SECURE_COOKIE_EXPECT_200}${NONE}";
-fi
+  test=$( eval $cmd )
+  if [ "$test" -eq "$expect" ];then
+    echo -e "${GREEN}${name}: passed (${test})${NONE}";
+  else
+    echo -e "${RED}${name}: failed (${test})${NONE}";
+  fi
+}
 
-TEST_SECURE_HEADER_EXPECT_200=`curl -X GET -o /dev/null --silent --head --write-out '%{http_code}\n' http://${MACHINE_IP}:8000/secure-auth-header/index.html -H 'cache-control: no-cache' --header "Authorization: Bearer ${VALIDJWT}"`
-if [ "$TEST_SECURE_HEADER_EXPECT_200" -eq "200" ];then
-  echo -e "${GREEN}Secure test with jwt auth header pass ${TEST_SECURE_HEADER_EXPECT_200}${NONE}";
-else
-  echo -e "${RED}Secure test with jwt auth header fail ${TEST_SECURE_HEADER_EXPECT_200}${NONE}";
-fi
+test_jwt "Insecure test" "/" "200"
 
-TEST_SECURE_HEADER_EXPECT_302=`curl -X GET -o /dev/null --silent --head --write-out '%{http_code}\n' http://${MACHINE_IP}:8000/secure-auth-header/index.html -H 'cache-control: no-cache'`
-if [ "$TEST_SECURE_HEADER_EXPECT_302" -eq "302" ];then
-  echo -e "${GREEN}Secure test without jwt auth header pass ${TEST_SECURE_HEADER_EXPECT_302}${NONE}";
-else
-  echo -e "${RED}Secure test without jwt auth header fail ${TEST_SECURE_HEADER_EXPECT_302}${NONE}";
-fi
+test_jwt "Secure test without jwt cookie" "/secure/" "302"
 
-TEST_SECURE_NO_REDIRECT_EXPECT_401=`curl -X GET -o /dev/null --silent --head --write-out '%{http_code}\n' http://${MACHINE_IP}:8000/secure-no-redirect/index.html -H 'cache-control: no-cache'`
-if [ "$TEST_SECURE_NO_REDIRECT_EXPECT_401" -eq "401" ];then
-  echo -e "${GREEN}Secure test without jwt no redirect pass ${TEST_SECURE_NO_REDIRECT_EXPECT_401}${NONE}";
-else
-  echo -e "${RED}Secure test without jwt no redirect fail ${TEST_SECURE_NO_REDIRECT_EXPECT_401}${NONE}";
-fi
+test_jwt "Secure test with jwt cookie" "/secure/" "200" "--cookie \"rampartjwt=${VALIDJWT}\""
 
-TEST_WITH_NO_SUB_EXPECT_200=`curl -X GET -o /dev/null --silent --head --write-out '%{http_code}\n' http://${MACHINE_IP}:8000/secure/index.html -H 'cache-control: no-cache' --cookie "rampartjwt=${MISSING_SUB_JWT}"`
-if [ "$TEST_WITH_NO_SUB_EXPECT_200" -eq "200" ];then
-  echo -e "${GREEN}Secure test with jwt cookie pass ${TEST_WITH_NO_SUB_EXPECT_200}${NONE}";
-else
-  echo -e "${RED}Secure test with jwt cookie fail ${TEST_WITH_NO_SUB_EXPECT_200}${NONE}";
-fi
+test_jwt "Secure test with jwt auth header" "/secure-auth-header/" "200" "--header \"Authorization: Bearer ${VALIDJWT}\""
 
-TEST_WITH_NO_EMAIL_EXPECT_200=`curl -X GET -o /dev/null --silent --head --write-out '%{http_code}\n' http://${MACHINE_IP}:8000/secure/index.html -H 'cache-control: no-cache' --cookie "rampartjwt=${MISSING_EMAIL_JWT}"`
-if [ "$TEST_WITH_NO_EMAIL_EXPECT_200" -eq "200" ];then
-  echo -e "${GREEN}Secure test with jwt cookie pass ${TEST_WITH_NO_EMAIL_EXPECT_200}${NONE}";
-else
-  echo -e "${RED}Secure test with jwt cookie fail ${TEST_WITH_NO_EMAIL_EXPECT_200}${NONE}";
-fi
+test_jwt "Secure test without jwt auth header" "/secure-auth-header/" "302"
+
+test_jwt "Secure test without jwt auth header" "/secure-no-redirect/" "401"
+
+test_jwt "Secure test with jwt cookie - with no sub" "/secure/" "200" " --cookie \"rampartjwt=${MISSING_SUB_JWT}\""
+
+test_jwt "Secure test with jwt cookie - with no email" "/secure/" "200" " --cookie \"rampartjwt=${MISSING_EMAIL_JWT}\""
 
 if [[ "$DOCKER_CONTAINER_NAME" != 0 ]]; then
   echo stopping container $DOCKER_CONTAINER_NAME
